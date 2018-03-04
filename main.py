@@ -30,7 +30,7 @@ for parameter in sys.argv:
         writeImgLink = True
 
 
-if (sys.argv[1] == '-url' and sys.argv[2] != ''):
+if (sys.argv[1] == '-site' and sys.argv[2] != ''):
     opener = urllib.request.FancyURLopener({})
     f = opener.open(sys.argv[2])
     content = f.read()
