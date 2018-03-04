@@ -13,7 +13,7 @@ writeImgLink = False
 for parameter in sys.argv:
     if (parameter == '-console'):
         printInConsole = True
-    
+
     if (parameter == '-file' and sys.argv[4] != ''):
         saveToFile = True
 
@@ -23,23 +23,23 @@ for parameter in sys.argv:
     if (parameter == '-a'):
         writeHref = True
 
-    if  (parameter == '-script'):
+    if (parameter == '-script'):
         writeScriptLink = True
 
     if (parameter == '-img'):
         writeImgLink = True
 
-
 if (sys.argv[1] == '-site' and sys.argv[2] != ''):
     opener = urllib.request.FancyURLopener({})
     f = opener.open(sys.argv[2])
     content = f.read()
-
+    # poprawić działanie printInConsole
+    # dodać funkcjonalność zapisu o domyślnej nazwie i zapisu tylko tego co niezbędne
     if (printInConsole):
         print(content)
 
     if (saveToFile):
-        file = open(sys.argv[4],'wb')
+        file = open(sys.argv[4], 'wb')
         file.write(content)
         file.close()
 
@@ -54,7 +54,7 @@ if (sys.argv[1] == '-site' and sys.argv[2] != ''):
     if (writeScriptLink):
         print("\n\nscript src: \n")
         soup = BeautifulSoup(content, 'html.parser')
-        inputTag = soup.findAll('script') 
+        inputTag = soup.findAll('script')
         for tag in inputTag:
             if (tag.has_attr("src")):
                 print(tag['src'])
@@ -62,7 +62,7 @@ if (sys.argv[1] == '-site' and sys.argv[2] != ''):
     if (writeHref):
         print("\n\na href: \n")
         soup = BeautifulSoup(content, 'html.parser')
-        inputTag = soup.findAll('a') 
+        inputTag = soup.findAll('a')
         for tag in inputTag:
             if (tag.has_attr("href")):
                 print(tag['href'])
@@ -71,4 +71,8 @@ if (sys.argv[1] == '-site' and sys.argv[2] != ''):
         soup = BeautifulSoup(content, 'html.parser')
         [s.extract() for s in soup(['style', 'script', '[document]', 'head', 'title'])]
         visible_text = soup.getText()
-        print(tag['href'])
+        print(visible_text)
+else:
+    print("The first argument should be '-site'\n" +
+          "The second should be '-console' or -file\n" +
+          "Then additional arguments like '-text', '-a', '-script', '-img'");
