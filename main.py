@@ -3,18 +3,20 @@ import sys
 import re
 import os
 import operator
+import math
 from bs4 import BeautifulSoup
 
 printInConsole = False
 saveToFile = False
 
-writeText = False
 writeHref = False
 writeScriptLink = False
 writeImgLink = False
 
-byteTextTable = []
-wordRankingDictionary = {}
+writeText = False
+writeCosSimilarity = False
+
+allSitesWordRankings = []
 
 
 def consolePrint(printInConsole, text):
@@ -24,15 +26,14 @@ def consolePrint(printInConsole, text):
         print(text)
 
 
-def saveFile(saveToFile, byteTextTable, file):
-    if saveToFile:
-        file = open(file, 'wb')
-        for text in byteTextTable:
-            file.write(text + os.linesep.encode('utf-8'))
-        file.close()
+def saveFile(byteTextTable, file):
+    file = open(file, 'wb')
+    for text in byteTextTable:
+        file.write(text + os.linesep.encode('utf-8'))
+    file.close()
 
 
-def createFileNameList(list):
+def createFileNameList(urlList):
     filenames = []
     for i in range(1, len(list) + 1):
         try:
@@ -52,9 +53,43 @@ def wordFinderAndRanking(text, byteTextTable):
             wordRankingDictionary[match.lower()] = 1
         else:
             wordRankingDictionary[match.lower()] += 1
-    sortedRanking = sorted(wordRankingDictionary.items(), key=operator.itemgetter(1), reverse=True)
-    for key, value in sortedRanking:
+
+    return wordRankingDictionary
+
+
+def sortRanking(wordRankingDictionary):
+    sortedWordRankingDictionary = sorted(wordRankingDictionary.items(), key=operator.itemgetter(1), reverse=True)
+    for key, value in sortedWordRankingDictionary:
         byteTextTable.append((str(value) + " " + key).encode('utf-8'))
+    return sortedWordRankingDictionary
+
+
+def cosinusSimilarity(allSitesWordRankings):
+    allSimilarities = []
+    for i in range(len(allSitesWordRankings)):
+        currentCompRanking1 = allSitesWordRankings[i]
+        for key, value in currentCompRanking1.items():
+            currentCompRanking1[key] = [value, 0]
+        globalDict = currentCompRanking1  # 'slowo' = [w pierwszym rankingu, w drugim rankingu]
+        for j in range(i + 1, len(allSitesWordRankings)):
+            currentCompRanking2 = allSitesWordRankings[j]
+            for key2, value2 in currentCompRanking2.items():
+                if key2 in globalDict.keys():
+                    globalDict[key2] = [globalDict[key2][0], value2]
+                else:
+                    globalDict[key2] = [0, value2]
+
+            sumOfSquares1 = 0.0
+            sumOfSquares2 = 0.0
+            productOfValues = 0.0
+            for key, value in globalDict.items():
+                sumOfSquares1 += value[0] ** 2
+                sumOfSquares2 += value[1] ** 2
+                productOfValues += value[0] * value[1]
+            dictVectorLength1 = math.sqrt(sumOfSquares1)
+            dictVectorLength2 = math.sqrt(sumOfSquares2)
+            allSimilarities.append(productOfValues / (dictVectorLength1 * dictVectorLength2))
+    print('Cosinus similarity = ' + str(allSimilarities))
 
 
 def urlSetter():
@@ -117,6 +152,9 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
         if parameter == '-text':
             writeText = True
 
+        if parameter == '-cos':
+            writeCosSimilarity = True
+
         if parameter == '-a':
             writeHref = True
 
@@ -131,51 +169,63 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
         f = opener.open(url)
         content = f.read()
 
-        if (writeImgLink):
+        if writeImgLink:
             print("\n\nimg src: \n")
             byteTextTable = []
             soup = BeautifulSoup(content, 'html.parser')
             inputTag = soup.findAll('img')
             for tag in inputTag:
-                if (tag.has_attr("src")):
+                if tag.has_attr("src"):
                     byteTextTable.append(tag['src'].encode('utf-8'))
                     consolePrint(printInConsole, tag['src'])
-            saveFile(saveToFile, byteTextTable, filenames[urlList.index(url)])
+            if saveToFile:
+                saveFile(byteTextTable, filenames[urlList.index(url)])
 
-        if (writeScriptLink):
+        if writeScriptLink:
             print("\n\nscript src: \n")
             byteTextTable = []
-            soup = BeautifulSoup(content, 'html.parser')  # czy trzeba dorabiać początki adresó stron? przykład allegro
+            soup = BeautifulSoup(content, 'html.parser')  # czy trzeba dorabiać początki adresów stron? przykład allegro
             inputTag = soup.findAll('script')
             for tag in inputTag:
-                if (tag.has_attr("src")):
+                if tag.has_attr("src"):
                     byteTextTable.append(tag['src'].encode('utf-8'))
                     consolePrint(printInConsole, tag['src'])
-            saveFile(saveToFile, byteTextTable, filenames[urlList.index(url)])
+            if saveToFile:
+                saveFile(byteTextTable, filenames[urlList.index(url)])
 
-        if (writeHref):
+        if writeHref:
             print("\n\na href: \n")
             byteTextTable = []
             soup = BeautifulSoup(content, 'html.parser')
             inputTag = soup.findAll('a')
             for tag in inputTag:
-                if (tag.has_attr("href")):
+                if tag.has_attr("href"):
                     byteTextTable.append(tag['href'].encode('utf-8'))
                     consolePrint(printInConsole, tag['href'])
-            saveFile(saveToFile, byteTextTable, filenames[urlList.index(url)])
+            if saveToFile:
+                saveFile(byteTextTable, filenames[urlList.index(url)])
 
-        if (writeText):
+        if writeText:
             soup = BeautifulSoup(content, 'html.parser')
             [s.extract() for s in soup(['style', 'script', '[document]', 'head', 'title'])]
             visible_text = soup.getText()
             byteTextTable = []
-            wordFinderAndRanking(visible_text, byteTextTable)
+            wordRanking = wordFinderAndRanking(visible_text, byteTextTable)
+            allSitesWordRankings.append(wordRanking)
+            sortedWordRankingDictionary = sortRanking(wordRanking)
             for word in byteTextTable:
                 consolePrint(printInConsole, word)
-            saveFile(saveToFile, byteTextTable, filenames[urlList.index(url)])
+                if saveToFile:
+                    saveFile(byteTextTable, filenames[urlList.index(url)])
         f.close()
-        # -depth np 2; glebokosc odczytu podstron strony
-        # -cos miara cosinusowa
+    if writeCosSimilarity and writeText:
+        cosinusSimilarity(allSitesWordRankings)
+    # -depth np 2; glebokosc odczytu podstron strony
+    # -cos miara cosinusowa
+    # -graph - graf skierowany podstron strony
+    # -pr - page ranking (wykład) utworzyć bazę danych
+
+    # zrobić własną stronę z id użytkownika i 5 przycisków (rejestrowane kliknięcie - kto kliknął)
 else:
     print("The first argument should be '-site'\n" +
           "The second should be '-console' or -file\n" +
