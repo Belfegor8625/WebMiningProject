@@ -10,6 +10,8 @@ printInConsole = False
 saveToFile = False
 
 writeHref = False
+checkInDepth = False
+
 writeScriptLink = False
 writeImgLink = False
 
@@ -17,136 +19,138 @@ writeText = False
 writeCosSimilarity = False
 
 allSitesWordRankings = []
+allSubsitesUrlList = []
 
 
-def consolePrint(printInConsole, text):
-    if printInConsole == True and writeText == True:
-        print(text.decode('utf-8'))
-    elif printInConsole == True:
-        print(text)
-
-
-def saveFile(byteTextTable, file):
+def save_file(file):
     file = open(file, 'wb')
     for text in byteTextTable:
         file.write(text + os.linesep.encode('utf-8'))
     file.close()
 
 
-def createFileNameList(urlList):
-    filenames = []
-    for i in range(1, len(list) + 1):
+def create_file_name_list(url_list):
+    file_names = []
+    for i in range(1, len(url_list) + 1):
         try:
             filename = sys.argv[sys.argv.index('-file') + i]
             if filename.startswith('-'):
                 filename = 'default' + str(i) + '.txt'
         except IndexError:
             filename = 'default' + str(i) + '.txt'
-        filenames.append(filename)
-    return filenames
+        file_names.append(filename)
+    return file_names
 
 
-def wordFinderAndRanking(text, byteTextTable):
-    wordRankingDictionary = {}
+def word_finder_and_ranking(text):
+    word_ranking_dictionary = {}
     for match in re.findall(r'[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]{2,}', text, re.MULTILINE):
-        if not match.lower() in wordRankingDictionary.keys():
-            wordRankingDictionary[match.lower()] = 1
+        if not match.lower() in word_ranking_dictionary.keys():
+            word_ranking_dictionary[match.lower()] = 1
         else:
-            wordRankingDictionary[match.lower()] += 1
+            word_ranking_dictionary[match.lower()] += 1
+    return word_ranking_dictionary
 
-    return wordRankingDictionary
 
-
-def sortRanking(wordRankingDictionary):
-    sortedWordRankingDictionary = sorted(wordRankingDictionary.items(), key=operator.itemgetter(1), reverse=True)
-    for key, value in sortedWordRankingDictionary:
+def sort_ranking(word_ranking_dictionary):
+    sorted_word_ranking_dictionary = sorted(word_ranking_dictionary.items(), key=operator.itemgetter(1), reverse=True)
+    for key, value in sorted_word_ranking_dictionary:
         byteTextTable.append((str(value) + " " + key).encode('utf-8'))
-    return sortedWordRankingDictionary
+    return sorted_word_ranking_dictionary
 
 
-def cosinusSimilarity(allSitesWordRankings):
-    allSimilarities = []
-    for i in range(len(allSitesWordRankings)):
-        currentCompRanking1 = allSitesWordRankings[i]
-        for key, value in currentCompRanking1.items():
-            currentCompRanking1[key] = [value, 0]
-        globalDict = currentCompRanking1  # 'slowo' = [w pierwszym rankingu, w drugim rankingu]
-        for j in range(i + 1, len(allSitesWordRankings)):
-            currentCompRanking2 = allSitesWordRankings[j]
-            for key2, value2 in currentCompRanking2.items():
-                if key2 in globalDict.keys():
-                    globalDict[key2] = [globalDict[key2][0], value2]
+def cosinus_similarity(all_sites_word_rankings):
+    all_similarities = []
+    for i in range(len(all_sites_word_rankings)):
+        current_comp_ranking1 = all_sites_word_rankings[i]
+        for key, value in current_comp_ranking1.items():
+            current_comp_ranking1[key] = [value, 0]
+        global_dict = current_comp_ranking1  # 'slowo' = [w pierwszym rankingu, w drugim rankingu]
+        for j in range(i + 1, len(all_sites_word_rankings)):
+            current_comp_ranking2 = all_sites_word_rankings[j]
+            for key2, value2 in current_comp_ranking2.items():
+                if key2 in global_dict.keys():
+                    global_dict[key2] = [global_dict[key2][0], value2]
                 else:
-                    globalDict[key2] = [0, value2]
+                    global_dict[key2] = [0, value2]
 
-            sumOfSquares1 = 0.0
-            sumOfSquares2 = 0.0
-            productOfValues = 0.0
-            for key, value in globalDict.items():
-                sumOfSquares1 += value[0] ** 2
-                sumOfSquares2 += value[1] ** 2
-                productOfValues += value[0] * value[1]
-            dictVectorLength1 = math.sqrt(sumOfSquares1)
-            dictVectorLength2 = math.sqrt(sumOfSquares2)
-            allSimilarities.append(productOfValues / (dictVectorLength1 * dictVectorLength2))
-    print('Cosinus similarity = ' + str(allSimilarities))
+            sum_of_squares1 = 0.0
+            sum_of_squares2 = 0.0
+            product_of_values = 0.0
+            for key, value in global_dict.items():
+                sum_of_squares1 += value[0] ** 2
+                sum_of_squares2 += value[1] ** 2
+                product_of_values += value[0] * value[1]
+            dict_vector_length1 = math.sqrt(sum_of_squares1)
+            dict_vector_length2 = math.sqrt(sum_of_squares2)
+            all_similarities.append(product_of_values / (dict_vector_length1 * dict_vector_length2))
+    print('Cosinus similarity = ' + str(all_similarities))
 
 
-def urlSetter():
+def url_setter():
     urls = []
-    urlCounter = 0
+    url_counter = 0
     while True:
-        url = sys.argv[urlCounter + 2]
+        url = sys.argv[url_counter + 2]
         if url.startswith('-'):
             break
         if url.endswith(',') and ',' in url[:-1]:
             url = url[:-1]
-            newUrls = url.split(',')
-            for elem in newUrls:
+            new_urls = url.split(',')
+            for elem in new_urls:
                 if ('https://' or 'http://') not in elem:
-                    elem = addUrlBeginning(elem)
+                    elem = add_url_beginning(elem)
                 urls.append(elem)
-            splitSize = len(newUrls)
-            urlCounter += splitSize
+            split_size = len(new_urls)
+            url_counter += split_size
         elif url.endswith(','):
             url = url[:-1]
             if 'https://' not in url and 'http://' not in url:
-                url = addUrlBeginning(url)
+                url = add_url_beginning(url)
             urls.append(url)
-            urlCounter += 1
+            url_counter += 1
         elif ',' in url:
-            newUrls = url.split(',')
-            for elem in newUrls:
+            new_urls = url.split(',')
+            for elem in new_urls:
                 if ('https://' or 'http://') not in elem:
-                    elem = addUrlBeginning(elem)
+                    elem = add_url_beginning(elem)
                 urls.append(elem)
-            splitSize = len(newUrls)
-            urlCounter += splitSize
+            split_size = len(new_urls)
+            url_counter += split_size
         else:
             if 'https://' not in url and 'http://' not in url:
-                url = addUrlBeginning(url)
+                url = add_url_beginning(url)
             urls.append(url)
-            urlCounter += 1
+            url_counter += 1
     return urls
 
 
-def addUrlBeginning(shortUrl):
-    fullUrl = 'http://' + shortUrl
-    return fullUrl
+def add_url_beginning(short_url):
+    full_url = 'http://' + short_url
+    return full_url
+
+
+def subsite_full_url_maker(url, tag_str):
+    url_parts = url.split('/')[:3]
+    if tag_str.startswith('/'):
+        subsite_url = str(url_parts[0]) + "//" + str(url_parts[2]) + tag_str
+    else:
+        subsite_url = str(url_parts[0]) + "//" + str(url_parts[2]) + '/' + tag_str
+    return subsite_url
 
 
 if sys.argv[1] == '-site' and sys.argv[2] != '':
     opener = urllib.request.FancyURLopener({})
-    urlList = urlSetter()
-    print(urlList)
-    filenames = []
+    urlList = url_setter()
+    file_names = []
+    depth_value = 0
+    subsite_url_list = []
     for parameter in sys.argv:
         if parameter == '-console':
             printInConsole = True
 
         if parameter == '-file':
-            filenames = createFileNameList(urlList)
-            print(filenames)
+            file_names = create_file_name_list(urlList)
             saveToFile = True
 
         if parameter == '-text':
@@ -164,8 +168,12 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
         if parameter == '-img':
             writeImgLink = True
 
+        if parameter == '-depth':
+            checkInDepth = True
+            depth_value = sys.argv[sys.argv.index('-depth') + 1]
+
     for url in urlList:
-        print(url)
+        print("\n" + url)
         f = opener.open(url)
         content = f.read()
 
@@ -177,9 +185,10 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
             for tag in inputTag:
                 if tag.has_attr("src"):
                     byteTextTable.append(tag['src'].encode('utf-8'))
-                    consolePrint(printInConsole, tag['src'])
+                if printInConsole:
+                    print(tag['src'])
             if saveToFile:
-                saveFile(byteTextTable, filenames[urlList.index(url)])
+                save_file(file_names[urlList.index(url)])
 
         if writeScriptLink:
             print("\n\nscript src: \n")
@@ -189,39 +198,52 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
             for tag in inputTag:
                 if tag.has_attr("src"):
                     byteTextTable.append(tag['src'].encode('utf-8'))
-                    consolePrint(printInConsole, tag['src'])
+                    if printInConsole:
+                        print(tag['src'])
             if saveToFile:
-                saveFile(byteTextTable, filenames[urlList.index(url)])
+                save_file(file_names[urlList.index(url)])
 
-        if writeHref:
+        if writeHref or checkInDepth:
             print("\n\na href: \n")
             byteTextTable = []
             soup = BeautifulSoup(content, 'html.parser')
             inputTag = soup.findAll('a')
             for tag in inputTag:
                 if tag.has_attr("href"):
-                    byteTextTable.append(tag['href'].encode('utf-8'))
-                    consolePrint(printInConsole, tag['href'])
-            if saveToFile:
-                saveFile(byteTextTable, filenames[urlList.index(url)])
+                    if 'https://' not in tag["href"] and 'http://' not in tag["href"]:
+                        tag = subsite_full_url_maker(url, tag["href"])
+                        if depth_value != 0:
+                            subsite_url_list.append(tag)
+                    else:
+                        tag = tag['href']
+                    if '#' not in tag and '@' not in tag:
+                        if writeHref:
+                            byteTextTable.append(tag.encode('utf-8'))
+                        if printInConsole:
+                            print(tag)
+            if saveToFile and writeHref:
+                save_file(file_names[urlList.index(url)])
+            if depth_value != 0:
+                allSubsitesUrlList.append(subsite_url_list)
 
         if writeText:
             soup = BeautifulSoup(content, 'html.parser')
             [s.extract() for s in soup(['style', 'script', '[document]', 'head', 'title'])]
             visible_text = soup.getText()
             byteTextTable = []
-            wordRanking = wordFinderAndRanking(visible_text, byteTextTable)
+            wordRanking = word_finder_and_ranking(visible_text)
             allSitesWordRankings.append(wordRanking)
-            sortedWordRankingDictionary = sortRanking(wordRanking)
+            sortedWordRankingDictionary = sort_ranking(wordRanking)
             for word in byteTextTable:
-                consolePrint(printInConsole, word)
+                if printInConsole:
+                    print(word)
                 if saveToFile:
-                    saveFile(byteTextTable, filenames[urlList.index(url)])
+                    save_file(file_names[urlList.index(url)])
         f.close()
     if writeCosSimilarity and writeText:
-        cosinusSimilarity(allSitesWordRankings)
+        cosinus_similarity(allSitesWordRankings)
     # -depth np 2; glebokosc odczytu podstron strony
-    # -cos miara cosinusowa
+
     # -graph - graf skierowany podstron strony
     # -pr - page ranking (wykład) utworzyć bazę danych
 
