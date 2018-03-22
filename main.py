@@ -19,7 +19,7 @@ writeText = False
 writeCosSimilarity = False
 
 allSitesWordRankings = []
-allSubsitesUrlList = []
+allSubsitesUrlGraphs = {}
 
 
 def save_file(file):
@@ -170,15 +170,18 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
 
         if parameter == '-depth':
             checkInDepth = True
-            depth_value = sys.argv[sys.argv.index('-depth') + 1]
+            depth_value = int(sys.argv[sys.argv.index('-depth') + 1])
 
+    last_url_in_current_level = urlList[-1]
     for url in urlList:
-        print("\n" + url)
+        if printInConsole:
+            print("\n\n" + url)
         f = opener.open(url)
         content = f.read()
 
         if writeImgLink:
-            print("\n\nimg src: \n")
+            if printInConsole:
+                print("\nimg src: \n")
             byteTextTable = []
             soup = BeautifulSoup(content, 'html.parser')
             inputTag = soup.findAll('img')
@@ -191,7 +194,8 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
                 save_file(file_names[urlList.index(url)])
 
         if writeScriptLink:
-            print("\n\nscript src: \n")
+            if printInConsole:
+                print("\nscript src: \n")
             byteTextTable = []
             soup = BeautifulSoup(content, 'html.parser')  # czy trzeba dorabiać początki adresów stron? przykład allegro
             inputTag = soup.findAll('script')
@@ -204,27 +208,35 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
                 save_file(file_names[urlList.index(url)])
 
         if writeHref or checkInDepth:
-            print("\n\na href: \n")
+            if printInConsole and writeHref:
+                print("\na href: \n")
             byteTextTable = []
+            subsite_url_list = []
             soup = BeautifulSoup(content, 'html.parser')
             inputTag = soup.findAll('a')
             for tag in inputTag:
                 if tag.has_attr("href"):
-                    if 'https://' not in tag["href"] and 'http://' not in tag["href"]:
+                    if 'https://' not in tag["href"] and 'http://' not in tag["href"] and \
+                            '#' not in tag["href"] and '@' not in tag["href"] and '.pdf' not in tag["href"] and \
+                            '//' not in tag['href']:
                         tag = subsite_full_url_maker(url, tag["href"])
-                        if depth_value != 0:
+                        if depth_value > 0:
                             subsite_url_list.append(tag)
                     else:
                         tag = tag['href']
-                    if '#' not in tag and '@' not in tag:
+                    if '#' not in tag and '@' not in tag and '.pdf' not in tag and '//' not in tag:
                         if writeHref:
                             byteTextTable.append(tag.encode('utf-8'))
-                        if printInConsole:
+                        if printInConsole and writeHref:
                             print(tag)
             if saveToFile and writeHref:
                 save_file(file_names[urlList.index(url)])
-            if depth_value != 0:
-                allSubsitesUrlList.append(subsite_url_list)
+            if depth_value > 0:
+                urlList += subsite_url_list
+                if url not in allSubsitesUrlGraphs.keys():
+                    allSubsitesUrlGraphs[url] = subsite_url_list
+                else:
+                    allSubsitesUrlGraphs[url] += subsite_url_list
 
         if writeText:
             soup = BeautifulSoup(content, 'html.parser')
@@ -236,13 +248,15 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
             sortedWordRankingDictionary = sort_ranking(wordRanking)
             for word in byteTextTable:
                 if printInConsole:
-                    print(word)
+                    print(word.decode('utf-8'))
                 if saveToFile:
                     save_file(file_names[urlList.index(url)])
+        if url == last_url_in_current_level:
+            depth_value -= 1
+            last_url_in_current_level = urlList[-1]
         f.close()
     if writeCosSimilarity and writeText:
         cosinus_similarity(allSitesWordRankings)
-    # -depth np 2; glebokosc odczytu podstron strony
 
     # -graph - graf skierowany podstron strony
     # -pr - page ranking (wykład) utworzyć bazę danych
