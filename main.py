@@ -5,12 +5,15 @@ import os
 import operator
 import math
 from bs4 import BeautifulSoup
+import matplotlib.pyplot as plt
+import networkx as nx
 
 printInConsole = False
 saveToFile = False
 
 writeHref = False
 checkInDepth = False
+showGraph = False
 
 writeScriptLink = False
 writeImgLink = False
@@ -83,8 +86,9 @@ def cosinus_similarity(all_sites_word_rankings):
                 product_of_values += value[0] * value[1]
             dict_vector_length1 = math.sqrt(sum_of_squares1)
             dict_vector_length2 = math.sqrt(sum_of_squares2)
-            all_similarities.append(product_of_values / (dict_vector_length1 * dict_vector_length2))
-    print('Cosinus similarity = ' + str(all_similarities))
+            similarity = product_of_values / (dict_vector_length1 * dict_vector_length2)
+            all_similarities.append(similarity)
+            print("Cosinus similarity of site: " + str(i) + " and site: " + str(j) + " equals: " + str(similarity))
 
 
 def url_setter():
@@ -139,6 +143,16 @@ def subsite_full_url_maker(url, tag_str):
     return subsite_url
 
 
+def save_graph(graph_dict, file_name):
+    graph = nx.Graph()
+    for key, values in graph_dict.items():
+        for value in values:
+            graph.add_edge(key, value)
+    nx.draw(graph, with_labels=True)
+    #plt.savefig(file_name)  # or
+    plt.show()
+
+
 if sys.argv[1] == '-site' and sys.argv[2] != '':
     opener = urllib.request.FancyURLopener({})
     urlList = url_setter()
@@ -171,6 +185,9 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
         if parameter == '-depth':
             checkInDepth = True
             depth_value = int(sys.argv[sys.argv.index('-depth') + 1])
+
+        if parameter == '-graph':
+            showGraph = True
 
     last_url_in_current_level = urlList[-1]
     for url in urlList:
@@ -222,6 +239,10 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
                         tag = subsite_full_url_maker(url, tag["href"])
                         if depth_value > 0:
                             subsite_url_list.append(tag)
+                            # if tag not in allSubsitesUrlGraphs.keys():
+                            #     allSubsitesUrlGraphs[tag] = [url]
+                            # else:
+                            #     allSubsitesUrlGraphs[tag] += [url]
                     else:
                         tag = tag['href']
                     if '#' not in tag and '@' not in tag and '.pdf' not in tag and '//' not in tag:
@@ -257,8 +278,8 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
         f.close()
     if writeCosSimilarity and writeText:
         cosinus_similarity(allSitesWordRankings)
-
-    # -graph - graf skierowany podstron strony
+    if showGraph:
+        save_graph(allSubsitesUrlGraphs, "my_graph.png")
     # -pr - page ranking (wykład) utworzyć bazę danych
 
     # zrobić własną stronę z id użytkownika i 5 przycisków (rejestrowane kliknięcie - kto kliknął)
