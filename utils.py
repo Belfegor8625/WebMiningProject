@@ -72,3 +72,11 @@ def url_setter():
             urls.append(url)
             url_counter += 1
     return urls
+
+
+def remove_url(url, url_list, url_graph):
+    for u in url_list:
+        if url_graph.get(u) is not None:
+            if url in url_graph.get(u):
+                url_graph.get(u).remove(url)
+                url_list.remove(url)

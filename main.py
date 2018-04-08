@@ -1,4 +1,4 @@
-import urllib.request
+import urllib.error
 import sys
 from bs4 import BeautifulSoup
 
@@ -19,12 +19,12 @@ writeImgLink = False
 writeText = False
 writeCosSimilarity = False
 
-allSitesWordRankings = []
+allSitesWordRankings = {}
 allSubsitesUrlGraphs = {}
 
 if sys.argv[1] == '-site' and sys.argv[2] != '':
-    opener = urllib.request.FancyURLopener({})
     urlList = utils.url_setter()
+    main_urls = urlList[:]
     file_names = []
     depth_value = 0
     subsite_url_list = []
@@ -63,10 +63,17 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
         if printInConsole:
             print("\n\n" + url)
         try:
-            f = opener.open(url)
+            f = urllib.request.urlopen(url)
             content = f.read()
-        except IOError:
-            print("Read error")
+        except ValueError as v:
+            print("Read error: " + str(url))
+            print(v)
+            continue
+        except urllib.error.HTTPError as http_error:
+            print(http_error)
+            print("For url: " + url)
+            utils.remove_url(url, urlList, allSubsitesUrlGraphs)
+            continue
         if writeImgLink:
             if printInConsole:
                 print("\nimg src: \n")
@@ -85,7 +92,7 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
             if printInConsole:
                 print("\nscript src: \n")
             byteTextTable = []
-            soup = BeautifulSoup(content, 'html.parser')  # czy trzeba dorabiać początki adresów stron? przykład allegro
+            soup = BeautifulSoup(content, 'html.parser')
             inputTag = soup.findAll('script')
             for tag in inputTag:
                 if tag.has_attr("src"):
@@ -121,6 +128,12 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
                 utils.save_file(file_names[urlList.index(url)], byteTextTable)
             if depth_value > 0:
                 urlList += subsite_url_list
+                if saveToFile:
+                    for url_filename in subsite_url_list:
+                        str_filename = str(url_filename)
+                        for char in [':', '/', '\\', '*', '?', '"', '<', '>', '|']:
+                            str_filename = str_filename.replace(char, '.')
+                        file_names.append(str_filename + ".txt")
                 if url not in allSubsitesUrlGraphs.keys():
                     allSubsitesUrlGraphs[url] = subsite_url_list
                 else:
@@ -132,26 +145,32 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
             visible_text = soup.getText()
             byteTextTable = []
             wordRanking = ranking.word_finder_and_ranking(visible_text)
-            allSitesWordRankings.append(wordRanking)
+            if writeCosSimilarity and url not in allSitesWordRankings.keys():
+                allSitesWordRankings[url] = wordRanking
             sortedWordRankingDictionary, byteTextTable = ranking.sort_ranking(wordRanking)
-            for word in byteTextTable:
-                if printInConsole and writeText:
-                    print(word.decode('utf-8'))
-                if saveToFile and writeText:
-                    utils.save_file(file_names[urlList.index(url)], byteTextTable)
+            if writeText:
+                for word in byteTextTable:
+                    if printInConsole:
+                        print(word.decode('utf-8'))
+                    if saveToFile:
+                        utils.save_file(file_names[urlList.index(url)], byteTextTable)
         if url == last_url_in_current_level:
             depth_value -= 1
             last_url_in_current_level = urlList[-1]
-        f.close()
+        try:
+            f.close()
+        except ValueError:
+            print("Value Error")
     if writeCosSimilarity:
-        ranking.cosinus_similarity(allSitesWordRankings)
+        if checkInDepth:
+            allSitesWordRankings = ranking.concatenate_subsites(allSitesWordRankings, allSubsitesUrlGraphs, main_urls)
+        ranking.cosinus_similarity(allSitesWordRankings, main_urls)
     if showGraph:
         graph.make_graph(allSubsitesUrlGraphs, "my_graph.png")
-    # -cos do poprawy
-    # -pr - page ranking (wykład) utworzyć bazę danych
+    # -pr - page ranking (wykład) utworzyć bazę danych (np firebase)
 
     # zrobić własną stronę z id użytkownika i 5 przycisków (rejestrowane kliknięcie - kto kliknął)
 else:
     print("The first argument should be '-site'\n" +
           "The second should be '-console' or -file\n" +
-          "Then additional arguments like '-text', '-a', '-script', '-img'");
+          "Then additional arguments like '-text', '-a', '-script', '-img'")
