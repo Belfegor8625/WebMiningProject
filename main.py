@@ -12,6 +12,7 @@ saveToFile = False
 writeHref = False
 checkInDepth = False
 showGraph = False
+showPageRank = False
 
 writeScriptLink = False
 writeImgLink = False
@@ -21,6 +22,7 @@ writeCosSimilarity = False
 
 allSitesWordRankings = {}
 allSubsitesUrlGraphs = {}
+allUrlGraphs = {}
 
 if sys.argv[1] == '-site' and sys.argv[2] != '':
     urlList = utils.url_setter()
@@ -58,8 +60,12 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
         if parameter == '-graph':
             showGraph = True
 
+        if parameter == '-pr':
+            showPageRank = True
     last_url_in_current_level = urlList[-1]
     for url in urlList:
+        if url in urlList[:urlList.index(url)]:
+            continue
         if printInConsole:
             print("\n\n" + url)
         try:
@@ -71,6 +77,11 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
             continue
         except urllib.error.HTTPError as http_error:
             print(http_error)
+            print("For url: " + url)
+            utils.remove_url(url, urlList, allSubsitesUrlGraphs)
+            continue
+        except urllib.error.URLError as url_error:
+            print(url_error)
             print("For url: " + url)
             utils.remove_url(url, urlList, allSubsitesUrlGraphs)
             continue
@@ -107,6 +118,7 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
                 print("\na href: \n")
             byteTextTable = []
             subsite_url_list = []
+            url_list_for_graph = []
             soup = BeautifulSoup(content, 'html.parser')
             inputTag = soup.findAll('a')
             for tag in inputTag:
@@ -120,6 +132,8 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
                     else:
                         tag = tag['href']
                     if '#' not in tag and '@' not in tag and '.pdf' not in tag:
+                        if showGraph:
+                            url_list_for_graph.append(tag)
                         if writeHref:
                             byteTextTable.append(tag.encode('utf-8'))
                         if printInConsole and writeHref:
@@ -127,7 +141,7 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
             if saveToFile and writeHref:
                 utils.save_file(file_names[urlList.index(url)], byteTextTable)
             if depth_value > 0:
-                urlList += subsite_url_list
+                urlList += url_list_for_graph
                 if saveToFile:
                     for url_filename in subsite_url_list:
                         str_filename = str(url_filename)
@@ -138,6 +152,11 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
                     allSubsitesUrlGraphs[url] = subsite_url_list
                 else:
                     allSubsitesUrlGraphs[url] += subsite_url_list
+                if showGraph:
+                    if url not in allUrlGraphs.keys():
+                        allUrlGraphs[url] = url_list_for_graph
+                    else:
+                        allUrlGraphs[url] += url_list_for_graph
 
         if writeText or writeCosSimilarity:
             soup = BeautifulSoup(content, 'html.parser')
@@ -166,9 +185,10 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
             allSitesWordRankings = ranking.concatenate_subsites(allSitesWordRankings, allSubsitesUrlGraphs, main_urls)
         ranking.cosinus_similarity(allSitesWordRankings, main_urls)
     if showGraph:
-        graph.make_graph(allSubsitesUrlGraphs, "my_graph.png")
+        pr_graph = graph.make_graph(allUrlGraphs, "my_graph.png")
+        if showPageRank:
+            graph.show_page_rank(pr_graph)
     # -pr - page ranking (wykład) utworzyć bazę danych (np firebase)
-
     # zrobić własną stronę z id użytkownika i 5 przycisków (rejestrowane kliknięcie - kto kliknął)
 else:
     print("The first argument should be '-site'\n" +
