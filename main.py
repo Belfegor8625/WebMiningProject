@@ -188,6 +188,7 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
         pr_graph = graph.make_graph(allUrlGraphs, "my_graph.png")
         if showPageRank:
             graph.show_page_rank(pr_graph)
+    #TODO: przerobić graf na domeny; sprawdzać na ostatnich podstonach czy maą odniesienia do stron sprawdzonych wcześniej
     # -pr - page ranking (wykład) utworzyć bazę danych (np firebase)
     # zrobić własną stronę z id użytkownika i 5 przycisków (rejestrowane kliknięcie - kto kliknął)
 else:
