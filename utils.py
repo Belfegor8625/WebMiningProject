@@ -80,3 +80,19 @@ def remove_url(url, url_list, url_graph):
             if url in url_graph.get(u):
                 url_graph.get(u).remove(url)
                 url_list.remove(url)
+
+
+def make_domains(all_url_graph):
+    domain_graph = {}
+    for key, values in all_url_graph.items():
+        key_domain_parts = key.split('/')[:3]
+        domain_key = key_domain_parts[0] + "//" + key_domain_parts[2]
+        for value in values:
+            value_domain_parts = value.split('/')
+            domain_value = value_domain_parts[0] + "//" + value_domain_parts[2]
+            if domain_key not in domain_graph.keys():
+                domain_graph[domain_key] = [domain_value]
+            else:
+                if domain_value not in domain_graph.get(domain_key):
+                    domain_graph[domain_key] += [domain_value]
+    return domain_graph

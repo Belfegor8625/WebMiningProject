@@ -1,10 +1,12 @@
 import urllib.error
+import urllib.request
 import sys
 from bs4 import BeautifulSoup
 
 import utils
 import ranking
 import graph
+import database
 
 printInConsole = False
 saveToFile = False
@@ -13,6 +15,9 @@ writeHref = False
 checkInDepth = False
 showGraph = False
 showPageRank = False
+showForDomainsOnly = False
+
+writeToDB = False
 
 writeScriptLink = False
 writeImgLink = False
@@ -33,41 +38,36 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
     for parameter in sys.argv:
         if parameter == '-console':
             printInConsole = True
-
         if parameter == '-file':
             file_names = utils.create_file_name_list(urlList)
             saveToFile = True
-
         if parameter == '-text':
             writeText = True
-
         if parameter == '-cos':
             writeCosSimilarity = True
-
         if parameter == '-a':
             writeHref = True
-
         if parameter == '-script':
             writeScriptLink = True
-
         if parameter == '-img':
             writeImgLink = True
-
         if parameter == '-depth':
             checkInDepth = True
             depth_value = int(sys.argv[sys.argv.index('-depth') + 1])
-
         if parameter == '-graph':
             showGraph = True
-
         if parameter == '-pr':
             showPageRank = True
+        if parameter == '-domain':
+            showForDomainsOnly = True
+        if parameter == '-dbwrite':
+            writeToDB = True
     last_url_in_current_level = urlList[-1]
+
     for url in urlList:
         if url in urlList[:urlList.index(url)]:
             continue
-        if printInConsole:
-            print("\n\n" + url)
+        print(url)
         try:
             f = urllib.request.urlopen(url)
             content = f.read()
@@ -96,6 +96,8 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
                     byteTextTable.append(tag['src'].encode('utf-8'))
                 if printInConsole:
                     print(tag['src'])
+            if writeToDB:
+                database.add_site_img_to_db(url, byteTextTable)
             if saveToFile:
                 utils.save_file(file_names[urlList.index(url)], byteTextTable)
 
@@ -110,6 +112,8 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
                     byteTextTable.append(tag['src'].encode('utf-8'))
                     if printInConsole:
                         print(tag['src'])
+            if writeToDB:
+                database.add_site_scripts_to_db(url, byteTextTable)
             if saveToFile:
                 utils.save_file(file_names[urlList.index(url)], byteTextTable)
 
@@ -132,37 +136,51 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
                     else:
                         tag = tag['href']
                     if '#' not in tag and '@' not in tag and '.pdf' not in tag:
-                        if showGraph:
-                            url_list_for_graph.append(tag)
+                        url_list_for_graph.append(tag)
                         if writeHref:
                             byteTextTable.append(tag.encode('utf-8'))
                         if printInConsole and writeHref:
                             print(tag)
+            if writeToDB:
+                database.add_site_links_to_db(url, byteTextTable)
             if saveToFile and writeHref:
                 utils.save_file(file_names[urlList.index(url)], byteTextTable)
-            if depth_value > 0:
-                urlList += url_list_for_graph
-                if saveToFile:
-                    for url_filename in subsite_url_list:
-                        str_filename = str(url_filename)
-                        for char in [':', '/', '\\', '*', '?', '"', '<', '>', '|']:
-                            str_filename = str_filename.replace(char, '.')
-                        file_names.append(str_filename + ".txt")
-                if url not in allSubsitesUrlGraphs.keys():
-                    allSubsitesUrlGraphs[url] = subsite_url_list
-                else:
-                    allSubsitesUrlGraphs[url] += subsite_url_list
-                if showGraph:
-                    if url not in allUrlGraphs.keys():
-                        allUrlGraphs[url] = url_list_for_graph
+            if checkInDepth:
+                if depth_value > 0:
+                    urlList += url_list_for_graph
+                    if saveToFile:
+                        for url_filename in subsite_url_list:
+                            str_filename = str(url_filename)
+                            for char in [':', '/', '\\', '*', '?', '"', '<', '>', '|']:
+                                str_filename = str_filename.replace(char, '.')
+                            file_names.append(str_filename + ".txt")
+                    if url not in allSubsitesUrlGraphs.keys():
+                        allSubsitesUrlGraphs[url] = subsite_url_list
                     else:
-                        allUrlGraphs[url] += url_list_for_graph
+                        allSubsitesUrlGraphs[url] += subsite_url_list
+                    if showGraph:
+                        if url not in allUrlGraphs.keys():
+                            allUrlGraphs[url] = url_list_for_graph
+                        else:
+                            for ur in url_list_for_graph:
+                                if ur not in allUrlGraphs.get(url):
+                                    allUrlGraphs[url] += [ur]
+                else:
+                    if showGraph:
+                        for previous_url in url_list_for_graph:
+                            if previous_url in urlList:
+                                if url not in allUrlGraphs.keys():
+                                    allUrlGraphs[url] = [previous_url]
+                                elif previous_url not in allUrlGraphs.get(url):
+                                    allUrlGraphs[url] += [previous_url]
 
         if writeText or writeCosSimilarity:
             soup = BeautifulSoup(content, 'html.parser')
             [s.extract() for s in soup(['style', 'script', '[document]', 'head', 'title'])]
             visible_text = soup.getText()
             byteTextTable = []
+            if writeToDB:
+                database.add_site_text_to_db(url, visible_text)
             wordRanking = ranking.word_finder_and_ranking(visible_text)
             if writeCosSimilarity and url not in allSitesWordRankings.keys():
                 allSitesWordRankings[url] = wordRanking
@@ -185,12 +203,19 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
             allSitesWordRankings = ranking.concatenate_subsites(allSitesWordRankings, allSubsitesUrlGraphs, main_urls)
         ranking.cosinus_similarity(allSitesWordRankings, main_urls)
     if showGraph:
-        pr_graph = graph.make_graph(allUrlGraphs, "my_graph.png")
+        if showForDomainsOnly:
+            all_domains_graph = utils.make_domains(allUrlGraphs)
+            pr_graph = graph.draw_graph(all_domains_graph, "my_domains_graph.png")
+            database.add_graph_to_database(all_domains_graph)
+        else:
+            database.add_graph_to_database(allUrlGraphs)
+            pr_graph = graph.draw_graph(allUrlGraphs, "my_graph.png")
         if showPageRank:
             graph.show_page_rank(pr_graph)
-    #TODO: przerobić graf na domeny; sprawdzać na ostatnich podstonach czy maą odniesienia do stron sprawdzonych wcześniej
-    # -pr - page ranking (wykład) utworzyć bazę danych (np firebase)
-    # zrobić własną stronę z id użytkownika i 5 przycisków (rejestrowane kliknięcie - kto kliknął)
+    # TODO
+    # wyszukiwarka 100 domen full-text search (search na podstawie słów na stronie) strony wyświetlić w kolejności od pageRankingu
+    # pobieranie batchy ze stackoverflow - przetworzyć je i znaleźć
+    # autotagger - dotajemy tekst i musimy go otagować
 else:
     print("The first argument should be '-site'\n" +
           "The second should be '-console' or -file\n" +

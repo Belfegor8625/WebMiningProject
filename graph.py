@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import operator
 
 
-def make_graph(graph_dict, file_name):
+def draw_graph(graph_dict, file_name):
     graph = nx.DiGraph()
     for key, values in graph_dict.items():
         for value in values:
