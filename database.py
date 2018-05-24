@@ -1,4 +1,5 @@
 import pyrebase
+import requests
 
 config = {"apiKey": "AIzaSyA167rqXj93fAxq-xDvrIGL0TuZC8_7arY ", "authDomain": "webmining-20102.firebaseapp.com",
           "databaseURL": "https://webmining-20102.firebaseio.com",
@@ -27,6 +28,12 @@ def prepare_key(key):
     return new_key
 
 
+def get_url(key):
+    url = key.replace('\\', '/')
+    url = url.replace(' ', '.')
+    return url
+
+
 # add data
 # db.child("agents").child("Lana").set(lana, user['idToken'])
 
@@ -39,25 +46,46 @@ def remove_graph():
 # db.child("agents").child("Lana").remove(user['idToken'])
 
 def add_site_text_to_db(url, text):
-    db.child("search_db").child(prepare_key(url)).child("text").set(text, user['idToken'])
+    try:
+        db.child("search_db").child(prepare_key(url)).child("text").set(text, user['idToken'])
+    except requests.exceptions.HTTPError as error:
+        print("Text: " + text)
+        print(error)
 
 
 def add_site_img_to_db(url, imgs):
     encoded = []
     for img in imgs:
         encoded.append(img.decode('utf-8'))
-    db.child("search_db").child(prepare_key(url)).child("imgs").set(encoded, user['idToken'])
+    try:
+        db.child("search_db").child(prepare_key(url)).child("imgs").set(encoded, user['idToken'])
+    except requests.exceptions.HTTPError as error:
+        print("Encoded img: " + str(encoded))
+        print(error)
 
 
 def add_site_links_to_db(url, links):
     encoded = []
     for link in links:
         encoded.append(link.decode('utf-8'))
-    db.child("search_db").child(prepare_key(url)).child("links").set(encoded, user['idToken'])
+    try:
+        db.child("search_db").child(prepare_key(url)).child("links").set(encoded, user['idToken'])
+    except requests.exceptions.HTTPError as error:
+        print("Encoded links: " + str(encoded))
+        print(error)
 
 
 def add_site_scripts_to_db(url, scripts):
     encoded = []
     for script in scripts:
         encoded.append(script.decode('utf-8'))
-    db.child("search_db").child(prepare_key(url)).child("scripts").set(encoded, user['idToken'])
+    try:
+        db.child("search_db").child(prepare_key(url)).child("scripts").set(encoded, user['idToken'])
+    except requests.exceptions.HTTPError as error:
+        print("Encoded scripts:" + str(encoded))
+        print(error)
+
+
+def get_text_from_db():
+    data = db.child("search_db").get(user['idToken']).val()
+    return data

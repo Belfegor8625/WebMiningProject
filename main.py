@@ -212,10 +212,7 @@ if sys.argv[1] == '-site' and sys.argv[2] != '':
             pr_graph = graph.draw_graph(allUrlGraphs, "my_graph.png")
         if showPageRank:
             graph.show_page_rank(pr_graph)
-    # TODO
-    # wyszukiwarka 100 domen full-text search (search na podstawie słów na stronie) strony wyświetlić w kolejności od pageRankingu
-    # pobieranie batchy ze stackoverflow - przetworzyć je i znaleźć
-    # autotagger - dotajemy tekst i musimy go otagować
+            database.add_page_rang_to_db(pr_graph)
 else:
     print("The first argument should be '-site'\n" +
           "The second should be '-console' or -file\n" +
