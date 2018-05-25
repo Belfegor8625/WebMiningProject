@@ -37,7 +37,6 @@ def get_url(key):
 # add data
 # db.child("agents").child("Lana").set(lana, user['idToken'])
 
-# TODO: utworzyć schemat danych
 def remove_graph():
     db.child('graph').remove(user['idToken'])
 
