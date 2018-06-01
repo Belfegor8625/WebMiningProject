@@ -11,7 +11,7 @@ sid = SentimentIntensityAnalyzer()
 
 def sentiment_data_collector(xml_name):
     dictionary = {'neg': 0, 'pos': 0, 'neu': 0, 'compound': 0}
-    for sentence in p.parse_xml(xml_name):
+    for sentence in p.parse_xml_for_comments(xml_name):
         ss = sid.polarity_scores(sentence)
         # for k in ss:
         # print('{0}: {1}, '.format(k, ss[k]), end='')
@@ -28,6 +28,8 @@ def main_sentiment_in_data(stats, xml_name):
     print(stats)
     print('Pos or neg? Answear: ' + max(stats.items(), key=operator.itemgetter(1))[0])
 
+
+#autotagger - treningowe z datadamp
 
 sentiment_data_collector('Comments beer.xml')
 sentiment_data_collector('Comments crypto.xml')
